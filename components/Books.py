@@ -102,5 +102,5 @@ def get_img(name):
         db.session.commit()
         return 'Img uploaded' ,200
     else:
-        img_data = Img.query.filter_by(id = name).first()
+        img_data = Img.query.filter_by(name = name).first()
         return Response(img_data.img,mimetype=img_data.mimetype)
