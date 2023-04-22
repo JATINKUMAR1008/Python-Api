@@ -1,9 +1,20 @@
-from flask import request,json,jsonify
+from flask import request,json,jsonify,Response
 from app import app
 from flask_marshmallow import Marshmallow
 from app import db
 from components import Orders
+from werkzeug.utils import secure_filename
+
 ma=Marshmallow(app)
+
+
+class Img(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    img = db.Column(db.String)
+    name = db.Column(db.Text)
+    mimetype = db.Column(db.Text)
+
+db.create_all()
 
 class Books(db.Model):
     name=db.Column(db.String)
@@ -18,10 +29,10 @@ class Books(db.Model):
     Msrp=db.Column(db.Integer)
     edition = db.Column(db.String)
     atb=db.Column(db.String)
-    
+    qty=db.Column(db.Integer)
     
 
-    def __init__ (self,name,price,Release,genre,copy,author,publisher,ratings,Msrp,edition,atb):
+    def __init__ (self,name,price,Release,genre,copy,author,publisher,ratings,Msrp,edition,atb,qty):
         self.name=name
         self.price=price
         self.Release=Release
@@ -33,11 +44,13 @@ class Books(db.Model):
         self.Msrp=Msrp
         self.edition=edition
         self.atb=atb
+        self.qty=qty
+        
     
 
 class BookSchema(ma.Schema):
     class Meta:
-        fields=('Book_id','name','price','Release','genre','copy','author','publisher','ratings','Msrp','edition','atb')
+        fields=('Book_id','name','price','Release','genre','copy','author','publisher','ratings','Msrp','edition','atb','qty')
 
 
 
@@ -52,7 +65,7 @@ db.create_all()
 def add_books():
     name=request.json['name']
     price=request.json['price']
-    Release=request.json['Realease']
+    Release=request.json['Release']
     genre=request.json['genre']
     copy=request.json['copy']
     author=request.json['author']
@@ -61,13 +74,33 @@ def add_books():
     Msrp=request.json['Msrp']
     edition=request.json['edition']
     atb=request.json['atb']
-    new_Book = Books(name,price,Release,genre,copy,author,publisher,ratings,Msrp,edition,atb)
+    qty=request.json['qty']
+    
+    new_Book = Books(name,price,Release,genre,copy,author,publisher,ratings,Msrp,edition,atb,qty)
+   
     db.session.add(new_Book)
     db.session.commit()
     return book_schema.jsonify(new_Book)
+
+
+
 
 @app.route('/books',methods=['GET'])
 def get_books():
     all_books=Books.query.all()
     result = book_schemas.dump(all_books)
     return jsonify(result)
+
+@app.route('/book_img/<name>',methods=['GET','POST'])
+def get_img(name):
+    if request.method=='POST':
+        pic = request.files['file']
+        filename = secure_filename(name)
+        mimetype=pic.mimetype
+        img = Img(img=pic.read(),mimetype=mimetype,name=filename)
+        db.session.add(img)
+        db.session.commit()
+        return 'Img uploaded' ,200
+    else:
+        img_data = Img.query.filter_by(id = name).first()
+        return Response(img_data.img,mimetype=img_data.mimetype)
